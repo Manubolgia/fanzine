@@ -9,6 +9,12 @@
   let drag = null;
   let guides = [];
   let live = null; // stroke being drawn
+  const touches = new Map(); // finger id -> [clientX, clientY]
+  let pinch = null; // two-finger zoom (of the view, or of the photo being cropped)
+  let ptype = 'mouse';
+  let lastTap = null, lastTouchDbl = 0;
+  let phoneFocus = ''; // on phones the view fits one page and centres the current one
+  const grab = (px) => (ptype === 'touch' ? px * 2.2 : px) / ppmCss; // fingers need bigger targets
 
   const proj = () => S.project;
   const dims = () => Z.pageSize(S.project);
@@ -50,6 +56,7 @@
     ov.addEventListener('pointerdown', down);
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
     ov.addEventListener('dblclick', dbl);
     stage.addEventListener('wheel', wheel, { passive: false });
     ov.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
@@ -135,8 +142,10 @@
   function render() {
     if (!cv) return;
     const { w: W, h: H } = dims();
-    const avail = [stage.clientWidth - 24, stage.clientHeight - 24];
-    const fit = Math.min(avail[0] / (2 * W + 2 * M), avail[1] / (H + 2 * M));
+    const gap = Z.phone() ? 8 : 24;
+    const avail = [stage.clientWidth - gap, stage.clientHeight - gap];
+    const phone = Z.phone();
+    const fit = Math.min(avail[0] / ((phone ? 1 : 2) * W + 2 * M), avail[1] / (H + 2 * M));
     ppmCss = Math.max(0.5, fit * S.zoom);
     const cssW = (2 * W + 2 * M) * ppmCss, cssH = (H + 2 * M) * ppmCss;
     const dpr = window.devicePixelRatio || 1;
@@ -147,6 +156,12 @@
     cv.style.width = ov.style.width = cv.parentNode.style.width = cssW + 'px';
     cv.style.height = ov.style.height = cv.parentNode.style.height = cssH + 'px';
     const ppm = ppmCss * dpr;
+    const focus = phone ? `${S.cur}|${ppmCss.toFixed(3)}|${stage.clientWidth}` : '';
+    if (focus && focus !== phoneFocus) {
+      phoneFocus = focus;
+      const side = Math.max(0, Z.curSpread().indexOf(S.cur));
+      stage.scrollLeft = cv.parentNode.offsetLeft + (M + side * W + W / 2) * ppmCss - stage.clientWidth / 2;
+    }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, cv.width, cv.height);
     const flat = Z.curFlat();
@@ -311,6 +326,12 @@
   // --- pointer handling
   function down(e) {
     if (e.button !== 0) return;
+    ptype = e.pointerType;
+    if (e.pointerType === 'touch') {
+      touches.set(e.pointerId, [e.clientX, e.clientY]);
+      if (touches.size === 2) return startPinch();
+      if (touches.size > 2 || pinch) return;
+    }
     ov.setPointerCapture(e.pointerId);
     const p = toSpread(e);
     const v = pageAt(p);
@@ -348,6 +369,15 @@
       return;
     }
     const hit = hitTest(p);
+    if (hit && e.pointerType === 'touch') {
+      const now = Date.now();
+      if (lastTap && lastTap.id === hit.el.id && now - lastTap.t < 350) {
+        lastTap = null;
+        lastTouchDbl = now;
+        return dbl(e);
+      }
+      lastTap = { id: hit.el.id, t: now };
+    }
     if (hit) {
       if (e.shiftKey) S.sel = S.sel.includes(hit.el.id) ? S.sel.filter((x) => x !== hit.el.id) : [...S.sel, hit.el.id];
       else if (!S.sel.includes(hit.el.id)) S.sel = [hit.el.id];
@@ -364,10 +394,50 @@
     const s = Z.selected()[0];
     if (!s) return null;
     const hp = handlePoints(s.el, sideOfPage(s.page));
-    for (const [k, [x, y]] of Object.entries(hp)) if (Math.hypot(p[0] - x, p[1] - y) < 7 / ppmCss) return k;
+    for (const [k, [x, y]] of Object.entries(hp)) if (Math.hypot(p[0] - x, p[1] - y) < grab(7)) return k;
     return null;
   }
+  // A second finger turns the gesture into a pinch: undo what the first finger started.
+  function startPinch() {
+    if (drag) {
+      if (drag.type === 'move') for (const it of drag.items) { it.el.x = it.x; it.el.y = it.y; }
+      else if (drag.type === 'crop') { drag.el.ox = drag.ox; drag.el.oy = drag.oy; }
+      else Object.assign(drag.el, drag.start);
+      drag = null;
+      guides = [];
+    }
+    live = null;
+    const [a, b] = [...touches.values()];
+    const crop = S.cropId && Z.findEl(S.cropId);
+    pinch = {
+      d0: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1,
+      crop: crop ? crop.el : null,
+      z0: crop ? crop.el.zoom : S.zoom,
+      at: toSpread({ clientX: (a[0] + b[0]) / 2, clientY: (a[1] + b[1]) / 2 }),
+    };
+    Z.requestRender();
+  }
+  // zoom around the point between the fingers, and follow them when they move together
+  function pinchMove() {
+    const [a, b] = [...touches.values()];
+    if (!b) return;
+    const k = Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d0;
+    if (pinch.crop) {
+      pinch.crop.zoom = Z.clamp(pinch.z0 * k, pinch.crop.fit === 'contain' ? 0.3 : 1, 8);
+      Z.changed(false, true);
+      return;
+    }
+    Z.setZoom(pinch.z0 * k);
+    render();
+    const r = ov.getBoundingClientRect();
+    stage.scrollLeft += r.left + (pinch.at[0] + M) * ppmCss - (a[0] + b[0]) / 2;
+    stage.scrollTop += r.top + (pinch.at[1] + M) * ppmCss - (a[1] + b[1]) / 2;
+  }
   function move(e) {
+    if (e.pointerType === 'touch' && touches.has(e.pointerId)) {
+      touches.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pinch) return pinchMove();
+    }
     const p = toSpread(e);
     if (live) {
       const { w: W } = dims();
@@ -383,7 +453,7 @@
     const dxy = [p[0] - drag.p0[0], p[1] - drag.p0[1]];
     const el = drag.el;
     if (drag.type === 'move') {
-      if (!drag.moved && Math.hypot(...dxy) < 2 / ppmCss) return;
+      if (!drag.moved && Math.hypot(...dxy) < grab(2)) return;
       drag.moved = true;
       const [dx, dy] = e.altKey ? dxy : snapMove(el, drag.page, drag.side, dxy[0], dxy[1], drag.start);
       for (const it of drag.items) { it.el.x = it.x + dx; it.el.y = it.y + dy; }
@@ -441,6 +511,16 @@
     el.y = ncy - el.h / 2;
   }
   function up(e) {
+    if (e.pointerType === 'touch') {
+      touches.delete(e.pointerId);
+      if (pinch) {
+        if (!touches.size) {
+          if (pinch.crop) { Z.changed(true); Z.ui.selectionChanged(); }
+          pinch = null;
+        }
+        return;
+      }
+    }
     if (live) {
       const st = live;
       live = null;
@@ -479,10 +559,11 @@
     }
   }
   function dbl(e) {
+    if (e.type === 'dblclick' && Date.now() - lastTouchDbl < 700) return; // already handled as a double tap
     const hit = hitTest(toSpread(e));
     if (!hit) return;
     S.sel = [hit.el.id];
-    if (hit.el.type === 'photo' && hit.el.photoId) { S.cropId = hit.el.id; Z.toast('Crop: drag to move the photo in its frame, scroll to zoom. Esc when done.'); }
+    if (hit.el.type === 'photo' && hit.el.photoId) { S.cropId = hit.el.id; Z.toast(ptype === 'touch' ? 'Crop: drag to move the photo in its frame, pinch to zoom. Tap outside when done.' : 'Crop: drag to move the photo in its frame, scroll to zoom. Esc when done.'); }
     else if (hit.el.type === 'text') Z.ui.focusText();
     Z.ui.selectionChanged();
     Z.requestRender();

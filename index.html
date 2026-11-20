@@ -2,13 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fanzine Editor</title>
+<meta name="theme-color" content="#f8f5ef">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Fanzine">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 <header id="top">
+  <button id="pagesBtn" class="btn icon phone-only" title="Pages and chapters">☰</button>
   <div class="brand">✂︎ Fanzine</div>
   <input id="title" type="text" title="Zine title" spellcheck="false">
   <div class="grp">
@@ -29,6 +37,7 @@
   </div>
   <div class="spacer"></div>
   <span id="saveState" class="savestate"></span>
+  <button id="syncBtn" class="btn sync" data-state="off" title="Sync between your devices"><i class="dot"></i><span id="syncLabel">Sync</span></button>
   <div class="grp">
     <button id="newBtn" class="btn" title="Start a new zine">New</button>
     <button id="openBtn" class="btn" title="Open a .zine file">Open</button>
@@ -37,8 +46,9 @@
     <button id="exportBtn" class="btn primary" title="Make the PDF to print">Export PDF</button>
   </div>
   <input id="openFile" type="file" accept=".zine" hidden>
-  <input id="importFile" type="file" accept="image/*,.heic,.heif" multiple hidden>
+  <input id="importFile" type="file" accept="image/*" multiple hidden>
 </header>
+<div id="scrim"></div>
 <div id="main">
   <aside id="left">
     <div id="sections"></div>
@@ -66,6 +76,8 @@
 
 <div class="modal" id="exportModal"><div class="dialog"><div class="dhead"><h2>Export for printing</h2><button class="btn icon" data-close>✕</button></div><div class="body"></div></div></div>
 <div class="modal" id="guideModal"><div class="dialog wide"><div class="dhead"><h2>Guide: make, print, fold, staple</h2><button class="btn icon" data-close>✕</button></div><div class="body guide"></div></div></div>
+<div class="modal" id="syncModal"><div class="dialog"><div class="dhead"><h2>Sync between your devices</h2><button class="btn icon" data-close>✕</button></div><div class="body"></div></div></div>
+<div class="modal" id="conflictModal"><div class="dialog"><div class="dhead"><h2>Which version?</h2></div><div class="body"></div></div></div>
 <div class="modal" id="newModal"><div class="dialog"><div class="dhead"><h2>New zine</h2><button class="btn icon" data-close>✕</button></div><div class="body"></div></div></div>
 
 <script src="js/core.js"></script>
@@ -73,6 +85,7 @@
 <script src="js/model.js"></script>
 <script src="js/layouts.js"></script>
 <script src="js/store.js"></script>
+<script src="js/sync.js"></script>
 <script src="js/photos.js"></script>
 <script src="js/art.js"></script>
 <script src="js/render.js"></script>

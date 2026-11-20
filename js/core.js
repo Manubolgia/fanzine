@@ -63,6 +63,9 @@ Z.el = (tag, attrs = {}, ...kids) => {
 Z.$ = (sel, root = document) => root.querySelector(sel);
 Z.$$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
+// phones and small tablets get the one-column layout (see the matching media query in app.css)
+Z.phone = () => matchMedia('(max-width: 820px), (max-height: 500px)').matches;
+
 Z.debounce = (fn, ms) => {
   let t = null;
   const d = (...a) => {

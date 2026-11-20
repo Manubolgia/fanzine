@@ -68,7 +68,8 @@ const saveNow = async () => {
   try {
     await Z.store.saveProject(Z.state.project);
     const s = Z.$('#saveState');
-    if (s) s.textContent = 'Saved in this browser · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (s) s.textContent = 'Saved on this device · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    Z.sync.changed();
   } catch (e) {
     Z.toast('Could not autosave: ' + e.message, 6000);
   }
@@ -186,6 +187,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   try { p = await Z.store.loadProject(); } catch (e) { Z.toast('Could not read the autosave: ' + e.message, 6000); }
   Z.loadProject(p || Z.newProject('A6'));
   if (!p) Z.ui.openNew(true);
+  Z.sync.init();
+  // offline support and installing as an app; only works from an https:// address
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch((e) => console.warn('No offline support:', e));
+  // ask the browser not to clear the zine when the device is short of space
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   if (document.fonts) {
     document.fonts.addEventListener('loadingdone', () => { Z.requestRender(); Z.ui.refreshLight(); });
     Z.fontsReady.then(() => { Z.requestRender(); Z.ui.refreshLight(); Z.ui.fontsLoaded && Z.ui.fontsLoaded(); });

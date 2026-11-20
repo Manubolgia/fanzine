@@ -157,14 +157,22 @@ Z.photos = (() => {
 
     thumbURL: (() => {
       const urls = new Map();
-      return async (photoId) => {
+      const get = async (photoId) => {
         if (urls.has(photoId)) return urls.get(photoId);
         const b = await Z.store.getBlob(photoId + ':thumb');
         const u = b ? URL.createObjectURL(b) : '';
         urls.set(photoId, u);
         return u;
       };
+      get.forgetMissing = () => { for (const [k, u] of urls) if (!u) urls.delete(k); };
+      return get;
     })(),
+
+    // Photo files can arrive later (from sync): drop the remembered "not here" answers.
+    async forgetMissing() {
+      await Promise.all([...bitmaps].map(async ([k, pr]) => { if (!(await pr.catch(() => null)) && bitmaps.get(k) === pr) bitmaps.delete(k); }));
+      this.thumbURL.forgetMissing();
+    },
 
     keyFor(el, needPx) {
       const f = el.filter || Z.defaultFilter();

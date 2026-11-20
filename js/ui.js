@@ -62,7 +62,20 @@ Z.ui = (() => {
     $('#addChapter').onclick = () => addSection('chapter');
     $('#addExtra').onclick = () => addSection('extra');
     $('#importFile').addEventListener('change', async (e) => { await importFiles([...e.target.files]); e.target.value = ''; });
-    Z.$$('#tabs button').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; renderPanel(); }));
+    Z.$$('#tabs button').forEach((b) => (b.onclick = () => {
+      if (Z.phone()) {
+        // on a phone the panel is a sheet under the page: the active tab's button folds it away
+        const open = document.body.classList.contains('sheet-open');
+        if (open && tab === b.dataset.tab) return document.body.classList.remove('sheet-open');
+        document.body.classList.add('sheet-open');
+      }
+      tab = b.dataset.tab;
+      renderPanel();
+    }));
+    $('#pagesBtn').onclick = () => document.body.classList.toggle('show-left');
+    $('#scrim').onclick = () => document.body.classList.remove('show-left');
+    $('#sections').addEventListener('click', (e) => { if (Z.phone() && e.target.closest('.thumb')) document.body.classList.remove('show-left'); });
+    $('#syncBtn').onclick = () => openSync();
     Z.$$('.modal').forEach((m) => m.addEventListener('pointerdown', (e) => { if (e.target === m) closeModals(); }));
     Z.$$('[data-close]').forEach((b) => (b.onclick = closeModals));
     window.addEventListener('dragover', (e) => e.preventDefault());
@@ -741,6 +754,7 @@ Z.ui = (() => {
   }
   function focusText() {
     tab = 'sel';
+    if (Z.phone()) document.body.classList.add('sheet-open');
     renderPanel();
     const t = $('#textEdit');
     if (t) { t.focus(); t.select(); }
@@ -830,7 +844,8 @@ Z.ui = (() => {
       el('h4', {}, 'Starting look'), lookBox,
       note('Brutalist: grotesk and mono type, black rules, big numbers, black-and-white photos, lots of white space. Scrapbook: handwriting, polaroids, tape and collage. Either way every page can be changed, and all layouts and fonts stay available.'),
       row('Title', t),
-      el('div', { class: 'btnrow right' }, first ? null : btn('Cancel', closeModals), btn(first ? 'Start' : 'Start a new zine', async () => {
+      !first && Z.sync.configured() ? el('p', { class: 'note warn' }, 'Sync is on, so the new zine also replaces this one on your other devices.') : null,
+      el('div', { class: 'btnrow right' }, first ? btn('Bring my zine from another device', () => { closeModals(); openSync(); }) : btn('Cancel', closeModals), btn(first ? 'Start' : 'Start a new zine', async () => {
         const p = Z.newProject(fmt, look);
         p.title = t.value || 'Our Year';
         for (const s of p.sections) for (const pg of s.pages) for (const x of pg.elements) if (x.type === 'text' && x.text === 'Our Year') x.text = p.title;
@@ -967,10 +982,127 @@ Z.ui = (() => {
   }
   function closeModals() {
     Z.$$('.modal.open').forEach((m) => m.classList.remove('open'));
+    if (conflictDone) conflictDone(null);
+  }
+
+  // ---------- sync between devices
+  function syncStatus(st) {
+    const b = $('#syncBtn');
+    if (!b) return;
+    b.dataset.state = st.kind;
+    $('#syncLabel').textContent = st.kind === 'off' ? 'Sync' : st.text;
+    b.title = st.error && st.kind === 'error' ? st.error : 'Sync between your devices: ' + st.text;
+    if ($('#syncModal').classList.contains('open') && Z.sync.configured() && !$('#syncModal input')) openSync();
+  }
+  function openSync() {
+    const m = $('#syncModal');
+    const body = $('.body', m);
+    body.innerHTML = '';
+    const msg = el('p', { class: 'note warn' });
+    const working = async (button, label, fn) => {
+      msg.textContent = '';
+      const old = button.textContent;
+      button.disabled = true;
+      button.textContent = label;
+      try { await fn(); } catch (e) { msg.textContent = e.message; console.error(e); }
+      button.disabled = false;
+      button.textContent = old;
+    };
+    if (Z.sync.configured()) {
+      const info = Z.sync.info(), st = Z.sync.status();
+      body.append(
+        el('p', {}, 'This device syncs your zine and photos with your private repository ', el('b', {}, info.repo), '. Everything is encrypted on the device before it is uploaded.'),
+        el('p', {}, el('b', {}, st.text), info.at ? ` · last synced ${new Date(info.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : ''),
+        el('p', { class: 'note warn' }, st.kind === 'error' && st.error ? st.error : ''),
+        note('It syncs by itself when you open the app, a few seconds after each change, and when you switch away from it. Work on one device at a time and let it sync before you switch; if both devices changed the zine, it asks which version to keep.'),
+        msg);
+      const now = btn('Sync now', () => working(now, 'Syncing…', () => Z.sync.run('manual')), 'primary');
+      const off = btn('Turn off on this device', async () => {
+        if (!confirm('Turn off sync on this device? The zine stays on this device and in your repository. To turn it on again you need the token and the passphrase.')) return;
+        await Z.sync.disconnect();
+        openSync();
+      });
+      body.append(el('div', { class: 'btnrow right' }, off, now));
+    } else {
+      const repo = el('input', { type: 'text', placeholder: 'your-name/fanzine-data', autocapitalize: 'off', autocomplete: 'off', spellcheck: 'false' });
+      const token = el('input', { type: 'password', placeholder: 'github_pat_…', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
+      const go = btn('Connect', () => working(go, 'Checking…', async () => {
+        const r = await Z.sync.connect(repo.value, token.value);
+        syncPassphrase(body, r.hasData);
+      }), 'primary');
+      body.append(
+        el('p', {}, 'Work on the same zine from your computer and your phone. Your zine and photos are kept in a private GitHub repository that only you can open, and they are encrypted on your device first, so even GitHub cannot look at them.'),
+        el('ol', { class: 'steps' },
+          el('li', {}, 'You need a private repository on GitHub to keep them in, for example ', el('code', {}, 'fanzine-data'), '. It must be private.'),
+          el('li', {}, 'Make a key (a “token”) that can use only that repository: open ', el('a', { href: 'https://github.com/settings/personal-access-tokens/new', target: '_blank', rel: 'noopener' }, 'github.com/settings/personal-access-tokens/new'), '. Give it a name, set the expiration to a date after the zine is finished, under ', el('b', {}, 'Repository access'), ' pick ', el('b', {}, 'Only select repositories'), ' and choose your repository, and under ', el('b', {}, 'Permissions'), ' give ', el('b', {}, 'Contents: Read and write'), '. Press ', el('b', {}, 'Generate token'), ' and copy it.'),
+          el('li', {}, 'Paste both here. On your phone, the easiest is to make a second token the same way in the phone’s browser.')),
+        row('Repository', repo), row('Token', token), msg,
+        note('The token is kept only on this device. Never share it: it opens your repository.'),
+        el('div', { class: 'btnrow right' }, go));
+    }
+    m.classList.add('open');
+  }
+  function syncPassphrase(body, hasData) {
+    body.innerHTML = '';
+    const msg = el('p', { class: 'note warn' });
+    const p1 = el('input', { type: 'password', autocomplete: hasData ? 'current-password' : 'new-password' });
+    const p2 = el('input', { type: 'password', autocomplete: 'new-password' });
+    const go = btn(hasData ? 'Unlock and sync' : 'Turn on sync', async () => {
+      msg.textContent = '';
+      if (!hasData && p1.value.length < 8) return (msg.textContent = 'Use at least 8 characters. A short sentence you will remember is ideal.');
+      if (!hasData && p1.value !== p2.value) return (msg.textContent = 'The two passphrases are different.');
+      go.disabled = true;
+      go.textContent = 'Working…';
+      try {
+        await Z.sync.unlock(p1.value, !hasData);
+        openSync();
+      } catch (e) {
+        msg.textContent = e.message;
+        go.disabled = false;
+        go.textContent = hasData ? 'Unlock and sync' : 'Turn on sync';
+      }
+    }, 'primary');
+    if (hasData) {
+      body.append(
+        el('p', {}, 'Connected. Type the passphrase you chose on your other device.'),
+        row('Passphrase', p1), msg,
+        note('Then the zine and its photos download to this device. With many photos this takes a few minutes the first time.'));
+    } else {
+      body.append(
+        el('p', {}, 'Connected. Now choose a passphrase. It encrypts your zine and photos before they leave this device. You type it once on each device.'),
+        row('Passphrase', p1), row('Again', p2), msg,
+        el('p', { class: 'note warn' }, 'Write it down somewhere safe. Nobody can reset it, not even GitHub: without it the synced copy cannot be opened (the zine on each device keeps working).'),
+        note('Then your zine and photos upload. With many photos this takes a few minutes the first time; you can keep working meanwhile, and if it is interrupted it carries on next time.'));
+    }
+    body.append(el('div', { class: 'btnrow right' }, go));
+    p1.focus();
+  }
+  // Both devices changed the zine since the last sync: let the person choose.
+  let conflictDone = null;
+  function syncConflict({ first, remote, local }) {
+    return new Promise((resolve) => {
+      const m = $('#conflictModal');
+      const body = $('.body', m);
+      body.innerHTML = '';
+      conflictDone = (v) => { conflictDone = null; m.classList.remove('open'); resolve(v); };
+      const desc = (p) => `“${p.title}” · ${p.photos.length} photo${p.photos.length === 1 ? '' : 's'} · ${Z.flat(p).length} pages`;
+      const choice = (title, detail, v) => el('button', { class: 'mode choice', onclick: () => conflictDone(v) }, el('div', {}, el('b', {}, title), el('div', { class: 'note' }, detail)));
+      body.append(
+        el('p', {}, first
+          ? 'Your sync storage already has a zine, and this device has one too. Which one should be used from now on, on all your devices?'
+          : 'The zine was changed on this device and on another device since they last synced. Which version do you want to keep?'),
+        el('div', { class: 'modes' },
+          choice('Use the synced version', desc(remote.project) + (remote.savedAt ? ` · saved ${new Date(remote.savedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : '') + '. Replaces the zine on this device.', 'remote'),
+          choice('Keep this device’s version', desc(local) + '. Replaces the synced version on all devices.', 'local')),
+        note('To be safe, you can first save this device’s version to a file; you can open it again later with Open.'),
+        el('div', { class: 'btnrow right' }, btn('Save this device’s version to a file', () => saveFile()), btn('Decide later', () => conflictDone(null))));
+      m.classList.add('open');
+    });
   }
 
   return {
     init, refreshAll, refreshLight, pageChanged, selectionChanged, focusText, goSpread, importFiles, saveFile, openGuide, openNew, closeModals,
+    openSync, syncStatus, syncConflict,
     toolChanged: () => { if (tab === 'add') renderPanel(); },
     fontsLoaded: () => { if (tab === 'sel' || tab === 'add') renderPanel(); },
     _goTo: goTo,

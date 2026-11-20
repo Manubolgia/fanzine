@@ -2,7 +2,7 @@
 'use strict';
 Z.GUIDE_HTML = `
 <nav class="gnav">
-  <a href="#g-start">Getting started</a><a href="#g-photos">Photos</a><a href="#g-supplies">Supplies</a><a href="#g-paper">Paper</a>
+  <a href="#g-start">Getting started</a><a href="#g-photos">Photos</a><a href="#g-devices">Phone &amp; sync</a><a href="#g-supplies">Supplies</a><a href="#g-paper">Paper</a>
   <a href="#g-sizes">Sizes</a><a href="#g-print">Printing</a><a href="#g-pocket">Pocket booklet</a><a href="#g-mini">Mini zine</a><a href="#g-manual">No duplex?</a><a href="#g-fold">Folding</a><a href="#g-staple">Stapling</a>
   <a href="#g-trim">Trimming</a><a href="#g-finish">Finishing</a><a href="#g-trouble">Problems</a>
 </nav>
@@ -15,15 +15,26 @@ Z.GUIDE_HTML = `
   <li><b>Try layouts:</b> the Layouts tab swaps the frames on the current page. Your photos follow, so you can flick through templates freely.</li>
   <li><b>Make it yours:</b> the Add tab has handwriting, typewriter and ransom-note text, stickers, tape, torn paper and a pen to draw with. The Page tab changes the paper.</li>
   <li><b>Click</b> to select, <b>drag</b> to move, corner squares to resize, the round handle to rotate. <b>Double-click a photo</b> to crop it (drag inside the frame, scroll to zoom, Esc when done). <b>Double-click text</b> to edit it.</li>
-  <li><b>Your work saves itself</b> in this browser as you go. Also press <b>Save file</b> now and then: it makes one <code>.zine</code> file with everything in it, your backup. If you clear the browser's data, only that file brings your zine back.</li>
+  <li><b>Your work saves itself</b> in this browser as you go. Also press <b>Save file</b> now and then: it makes one <code>.zine</code> file with everything in it, your backup. If you clear the browser's data, only that file (or Sync) brings your zine back. To work on your phone too, turn on <b>Sync</b> (see Phone &amp; sync).</li>
 </ol>
 <p class="tip">The blue dashed line is the safe margin: keep faces and words inside it. The pink band on the outer edges is where home printers can't print. You will trim it off at the end, so let backgrounds and full-bleed photos run into it, but nothing important.</p>
 
 <h2 id="g-photos">Getting your photos</h2>
 <ul>
   <li>Use the original files where you can (not screenshots or photos sent through chat apps, which are made smaller). A photo needs about 1,800 pixels on its long side to fill a whole page sharply; the editor warns you when a photo is stretched too far.</li>
-  <li><b>iPhone photos</b> are often HEIC files, which the browser can't open. Either AirDrop/email them (they arrive as JPEG when you choose "Most Compatible"), export from the Photos app as JPEG, or set <i>Settings → Camera → Formats → Most Compatible</i> before taking new ones. Google Photos downloads are JPEG already.</li>
-  <li>The photos stay on this computer: the editor makes resized copies inside the browser and never uploads anything.</li>
+  <li><b>On the iPhone itself</b>, Add photos opens your photo library and the photos arrive as JPEG by themselves.</li>
+  <li><b>iPhone photos on the computer</b> are often HEIC files, which the browser can't open. Either AirDrop/email them (they arrive as JPEG when you choose "Most Compatible"), export from the Photos app as JPEG, or set <i>Settings → Camera → Formats → Most Compatible</i> before taking new ones. Google Photos downloads are JPEG already.</li>
+  <li>The photos stay on your devices: the editor makes resized copies inside the browser. Only if you turn on Sync are they uploaded, and then encrypted first, to your own private repository.</li>
+</ul>
+
+<h2 id="g-devices">On your phone, and syncing between devices</h2>
+<ul>
+  <li><b>Install it as an app:</b> open the editor's web address. On an iPhone, in Safari tap <i>Share → Add to Home Screen</i>. On Android, in Chrome tap <i>⋮ → Install app</i>. On a computer, Chrome shows an install button in the address bar. Once opened, it also works without internet.</li>
+  <li><b>On a phone:</b> the tabs at the bottom open the tools (tap the same tab again to fold them away), ☰ shows all pages. Pinch to zoom, move around with two fingers. Double-tap a photo to crop it (drag to move it, pinch to zoom it, tap outside when done); double-tap text to edit it.</li>
+  <li><b>Sync</b> (button at the top) keeps the same zine on your computer and your phone. You need a <b>private</b> GitHub repository and a token that can use only that repository; the Sync window walks you through it. You choose a passphrase on the first device and type it once on each other device.</li>
+  <li>Everything is <b>encrypted on the device</b> before it is uploaded, so nobody else, not even GitHub, can see your pages or photos. <b>Write the passphrase down</b>: nobody can reset it.</li>
+  <li>It syncs by itself when you open the app, a few seconds after each change, and when you switch away. Work on one device at a time and give it a moment to say "Synced" before you switch. If both devices changed the zine, it asks which version to keep.</li>
+  <li>The first upload of many photos takes a while; if it is interrupted it carries on next time. Print from the computer: exporting the PDF on a phone works but is slow.
 </ul>
 
 <h2 id="g-supplies">What you need</h2>

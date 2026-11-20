@@ -6,13 +6,19 @@ right order for folding and stapling. Everything stays on your computer: photos 
 
 ## Open it
 
-Double-click `index.html`, or open it in **Google Chrome** (or Chromium / Edge). It needs no
-internet and no installation; the fonts are in the `fonts` folder.
+Online: **https://manubolgia.github.io/fanzine/** (in Chrome, Edge or Safari). It is an installable
+app: on an iPhone use Safari's *Share → Add to Home Screen*, on Android Chrome's *Install app*, on a
+computer the install button in Chrome's address bar. After the first visit it works offline.
+You can also double-click `index.html` in this folder (no install, no internet; sync needs the online address).
 
-- Use the same browser every time: your work is saved inside that browser.
-- Press **Save file** now and then. It writes one `.zine` file with the layout and all photos.
-  That file is your backup, and **Open** brings it back (also on another computer).
-- Firefox and Safari were not tested. Chrome was.
+- Your work saves itself on the device you use. Press **Save file** now and then: it writes one
+  `.zine` file with the layout and all photos, your backup; **Open** brings it back.
+- **Sync** (top bar) keeps the same zine on your computer and your phone, through a private GitHub
+  repository of yours. Everything is encrypted on the device with your passphrase before upload,
+  so the repository holds only unreadable data. The Sync window explains the one-time setup
+  (a token that can use only that repository, and a passphrase you type once per device).
+- Tested in Chrome on Linux, including a phone-sized screen with simulated touch. Safari and real
+  phones were not tested.
 
 ## Make the zine
 
@@ -59,8 +65,8 @@ The **Guide** button in the app has the full steps with supplies and troubleshoo
 
 ## What's inside
 
-Plain HTML, CSS and JavaScript, no build step and no libraries:
-`js/render.js` draws pages (the same code draws the screen and the PDF), `js/pdf.js` writes the
+Plain HTML, CSS and JavaScript, no build step and no libraries. The app code is public; your zine and photos never go into it.
+`js/sync.js` the encrypted sync, `sw.js` offline support, `js/render.js` draws pages (the same code draws the screen and the PDF), `js/pdf.js` writes the
 PDF and places pages on the paper, `js/layouts.js` holds the templates, `js/ui.js` and
 `js/editor.js` the interface, `js/guide.js` the printing guide. Fonts are from Google Fonts
 (SIL Open Font License / Apache 2.0).
