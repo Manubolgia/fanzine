@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fanzine Editor</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand">✂︎ Fanzine</div>
+  <input id="title" type="text" title="Zine title" spellcheck="false">
+  <div class="grp">
+    <button id="undoBtn" class="btn icon" title="Undo (Ctrl+Z)">↶</button>
+    <button id="redoBtn" class="btn icon" title="Redo (Ctrl+Shift+Z)">↷</button>
+  </div>
+  <div class="grp tools">
+    <button class="btn on" data-tool="select" title="Select and move (V)">➚ Select</button>
+    <button class="btn" data-tool="text" title="Click on the page to add text (T)">T Text</button>
+    <button class="btn" data-tool="draw" title="Draw with a pen (P)">✎ Draw</button>
+  </div>
+  <div class="grp">
+    <button id="zoomOut" class="btn icon" title="Zoom out (Ctrl+scroll)">−</button>
+    <button id="zoomFit" class="btn" title="Fit the spread"><span id="zoomLabel">100%</span></button>
+    <button id="zoomIn" class="btn icon" title="Zoom in">+</button>
+    <button id="guidesBtn" class="btn" title="Show safe margin and printer edge">Guides</button>
+    <button id="snapBtn" class="btn" title="Snap to page edges, centre and other items">Snap</button>
+  </div>
+  <div class="spacer"></div>
+  <span id="saveState" class="savestate"></span>
+  <div class="grp">
+    <button id="newBtn" class="btn" title="Start a new zine">New</button>
+    <button id="openBtn" class="btn" title="Open a .zine file">Open</button>
+    <button id="saveBtn" class="btn" title="Save everything (layout and photos) to one .zine file (Ctrl+S)">Save file</button>
+    <button id="guideBtn" class="btn" title="How to use, print, fold and staple">Guide</button>
+    <button id="exportBtn" class="btn primary" title="Make the PDF to print">Export PDF</button>
+  </div>
+  <input id="openFile" type="file" accept=".zine" hidden>
+  <input id="importFile" type="file" accept="image/*,.heic,.heif" multiple hidden>
+</header>
+<div id="main">
+  <aside id="left">
+    <div id="sections"></div>
+    <div class="left-foot">
+      <div class="btnrow"><button id="addChapter" class="btn">+ Chapter</button><button id="addExtra" class="btn">+ Other section</button></div>
+      <div id="leftSummary" class="note"></div>
+    </div>
+  </aside>
+  <main id="center">
+    <div id="pagebar"></div>
+    <div id="stage"><div id="board"><canvas id="cv"></canvas><div id="ov"></div></div></div>
+  </main>
+  <aside id="right">
+    <nav id="tabs">
+      <button data-tab="photos">Photos</button>
+      <button data-tab="layouts">Layouts</button>
+      <button data-tab="add">Add</button>
+      <button data-tab="page">Page</button>
+      <button data-tab="sel">Selected</button>
+    </nav>
+    <div id="panel"></div>
+  </aside>
+</div>
+<div id="toasts"></div>
+
+<div class="modal" id="exportModal"><div class="dialog"><div class="dhead"><h2>Export for printing</h2><button class="btn icon" data-close>✕</button></div><div class="body"></div></div></div>
+<div class="modal" id="guideModal"><div class="dialog wide"><div class="dhead"><h2>Guide: make, print, fold, staple</h2><button class="btn icon" data-close>✕</button></div><div class="body guide"></div></div></div>
+<div class="modal" id="newModal"><div class="dialog"><div class="dhead"><h2>New zine</h2><button class="btn icon" data-close>✕</button></div><div class="body"></div></div></div>
+
+<script src="js/core.js"></script>
+<script src="js/fonts.js"></script>
+<script src="js/model.js"></script>
+<script src="js/layouts.js"></script>
+<script src="js/store.js"></script>
+<script src="js/photos.js"></script>
+<script src="js/art.js"></script>
+<script src="js/render.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/guide.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
