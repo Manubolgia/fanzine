@@ -15,6 +15,8 @@ Z.GUIDE_HTML = `
   <li><b>Try layouts:</b> the Layouts tab swaps the frames on the current page. Your photos follow, so you can flick through templates freely.</li>
   <li><b>Make it yours:</b> the Add tab has handwriting, typewriter and ransom-note text, stickers, tape, torn paper and a pen to draw with. The Page tab changes the paper.</li>
   <li><b>Click</b> to select, <b>drag</b> to move, corner squares to resize, the round handle to rotate. <b>Double-click a photo</b> to crop it (drag inside the frame, scroll to zoom, Esc when done). <b>Double-click text</b> to edit it.</li>
+  <li><b>Stretch and bend words:</b> select a text, then in Selected → Shape pick <b>Stretch</b> and drag the box's handles: the letters fill the box, as wide or tall as you like. <b>Each line</b> stacks every line at full width, like a poster. <b>Warp</b> bends the word into an arc, bulge, wave, rise or perspective; <b>Bend</b> sets how much (negative turns it the other way).</li>
+  <li><b>📖 Preview</b> (above the page) shows the zine as a book: turn the pages with the arrows, a click or a swipe. It is drawn exactly as it prints.</li>
   <li><b>Your work saves itself</b> in this browser as you go. Also press <b>Save file</b> now and then: it makes one <code>.zine</code> file with everything in it, your backup. If you clear the browser's data, only that file (or Sync) brings your zine back. To work on your phone too, turn on <b>Sync</b> (see Phone &amp; sync).</li>
 </ol>
 <p class="tip">The blue dashed line is the safe margin: keep faces and words inside it. The pink band on the outer edges is where home printers can't print. You will trim it off at the end, so let backgrounds and full-bleed photos run into it, but nothing important.</p>

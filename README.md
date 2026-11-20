@@ -39,9 +39,11 @@ You can also double-click `index.html` in this folder (no install, no internet; 
 4. **Try layouts** (Layouts tab): click through templates; your photos follow.
 5. **Make it yours**: Add tab (text styles, stickers, rules, tape, torn paper, pen), Page tab
    (paper colour and texture), and the Selected tab for whatever you clicked (filters like hard
-   B&W, photocopy, halftone, duotone; borders, torn edges, captions; fonts, size, spacing).
-   Double-click a photo to crop it; double-click text to edit it.
-6. **Export PDF**. Tick *Only the first sheet* for a test print first. The export window shows a
+   B&W, photocopy, halftone, duotone; borders, torn edges, captions; fonts, size, spacing;
+   *Shape* to stretch a word to fill its box, stack lines poster-style, or warp it into an arc,
+   bulge, wave, rise or perspective). Double-click a photo to crop it; double-click text to edit it.
+6. **📖 Preview** (above the page) to flip through the zine as a book, exactly as it prints.
+7. **Export PDF**. Tick *Only the first sheet* for a test print first. The export window shows a
    picture of which page goes where on the paper.
 
 Shortcuts: Ctrl+Z / Ctrl+Shift+Z undo and redo, Delete, Ctrl+D duplicate, Ctrl+C / Ctrl+V copy

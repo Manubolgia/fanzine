@@ -28,8 +28,8 @@ Z.sync = (() => {
   const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', te.encode(s)))].map((b) => b.toString(16).padStart(2, '0')).join('');
   // What counts as a change. Text boxes re-measure their height whenever they are drawn, and
   // devices measure fonts a hair differently, so that height is left out (or two devices would
-  // keep re-uploading the same zine to each other).
-  const fingerprint = (p) => sha256(JSON.stringify(p, (k, v) => (v && v.type === 'text' && 'h' in v ? { ...v, h: 0 } : v)));
+  // keep re-uploading the same zine to each other). Stretched text keeps the height you gave it.
+  const fingerprint = (p) => sha256(JSON.stringify(p, (k, v) => (v && v.type === 'text' && 'h' in v && !v.fit ? { ...v, h: 0 } : v)));
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const saveCfg = () => Z.db.put('kv', 'sync', cfg);
   const setStatus = (kind, text) => { status = { kind, text }; Z.ui.syncStatus && Z.ui.syncStatus(status); };

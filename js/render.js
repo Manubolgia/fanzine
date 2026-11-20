@@ -80,7 +80,7 @@
       let cx = el.align === 'center' ? (el.w - total) / 2 : el.align === 'right' ? el.w - total : 0;
       for (const b of r) {
         if (b.space) { cx += b.space; continue; }
-        boxes.push({ ...b, x: cx, y: li * lineH, h: lineH * 0.92 });
+        boxes.push({ ...b, x: cx, y: li * lineH, h: lineH * 0.92, li });
         cx += b.w;
       }
     });
@@ -89,14 +89,24 @@
 
   const RANSOM_PAPERS = [['#ffffff', '#111111'], ['#111111', '#ffffff'], ['#f2c14e', '#111111'], ['#c8553d', '#ffffff'], ['#e9e5dc', '#1f3a5f'], ['#f4a6b7', '#111111'], ['#fbf6ea', '#c8553d'], ['#7fb3d5', '#111111']];
 
+  const lineX = (el, ln) => (el.align === 'center' ? (el.w - ln.w) / 2 : el.align === 'right' ? el.w - ln.w : 0);
+  const lineTop = (lay, i) => lay.pad + i * lay.lh + (lay.lh - lay.sizeMm) / 2;
+
   function drawText(ctx, el, o) {
-    const lay = Z.layoutText(el);
-    const ppm = o.ppm;
     ctx.save();
     ctx.translate(-el.w / 2, -el.h / 2);
+    if (Z.stretched(el)) drawStretched(ctx, el, o);
+    else paintText(ctx, el, Z.layoutText(el), o.ppm);
+    ctx.restore();
+  }
+
+  // Paints laid-out text with the block's top-left at the origin (mm). `only` limits it to one line.
+  function paintText(ctx, el, lay, ppm, only) {
+    ctx.save();
     ctx.scale(1 / ppm, 1 / ppm); // draw text in device pixels
     if (lay.ransom) {
       lay.ransom.forEach((b) => {
+        if (only != null && b.li !== only) return;
         const r = Z.rng(el.id + ':' + b.i + ':3');
         const pair = RANSOM_PAPERS[Math.floor(r() * RANSOM_PAPERS.length)];
         ctx.save();
@@ -124,8 +134,9 @@
     ctx.textBaseline = 'alphabetic';
     const asc = lay.sizeMm * 0.8;
     lay.lines.forEach((ln, i) => {
-      const x = el.align === 'center' ? (el.w - ln.w) / 2 : el.align === 'right' ? el.w - ln.w : 0;
-      const yTop = lay.pad + i * lay.lh + (lay.lh - lay.sizeMm) / 2;
+      if (only != null && i !== only) return;
+      const x = lineX(el, ln);
+      const yTop = lineTop(lay, i);
       if (el.bg && ln.t) {
         ctx.fillStyle = el.bg;
         const p = lay.sizeMm * 0.22;
@@ -154,6 +165,133 @@
       }
     });
     ctx.restore();
+  }
+
+  // --- stretched text: el.fit 'stretch' scales the letters (unevenly if need be) so their ink
+  // fills the box edge to edge; 'lines' does that per line, stacked. The box size is the user's,
+  // so el.h is not re-measured. Lines wrap at el.wrap (the width when stretching was turned on),
+  // or only at line breaks. el.warp then bends the filled box into a shape.
+  Z.stretched = (el) => el.type === 'text' && !!el.fit;
+
+  // the text laid out unscaled, and the ink box of each non-empty line in that layout (mm)
+  function stretchLayout(el) {
+    let bw = el.wrap;
+    if (!bw) {
+      const l0 = Z.layoutText({ ...el, w: 1e5, align: 'left' });
+      bw = (l0.ransom ? Math.max(0, ...l0.ransom.map((b) => b.x + b.w)) : Math.max(0, ...l0.lines.map((ln) => ln.w))) + 0.01;
+    }
+    const tel = { ...el, w: bw };
+    const lay = Z.layoutText(tel);
+    const rows = [];
+    if (lay.ransom) {
+      for (const b of lay.ransom) {
+        // letters are tilted up to 6 degrees, so their corners reach a little further
+        const hx = b.w / 2 + b.h * 0.06, hy = b.h / 2 + b.w * 0.06, cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+        const r = rows[b.li] || (rows[b.li] = { li: b.li, x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity });
+        r.x1 = Math.min(r.x1, cx - hx); r.x2 = Math.max(r.x2, cx + hx);
+        r.y1 = Math.min(r.y1, cy - hy); r.y2 = Math.max(r.y2, cy + hy);
+      }
+    } else {
+      measureCtx.font = fontCss(el, REF);
+      const k = lay.sizeMm / REF;
+      const e = el.outline ? lay.sizeMm * 0.04 : 0;
+      lay.lines.forEach((ln, i) => {
+        if (!ln.t.trim()) return;
+        const m = measureCtx.measureText(ln.t);
+        let l = -m.actualBoundingBoxLeft * k, r = m.actualBoundingBoxRight * k;
+        if (lay.sp) {
+          // drawn one letter at a time, as in paintText
+          l = Infinity; r = -Infinity;
+          let cx = 0;
+          for (const ch of ln.t) {
+            const c = measureCtx.measureText(ch);
+            if (ch.trim()) { l = Math.min(l, cx - c.actualBoundingBoxLeft * k); r = Math.max(r, cx + c.actualBoundingBoxRight * k); }
+            cx += c.width * k + lay.sp;
+          }
+        }
+        const x = lineX(tel, ln), yTop = lineTop(lay, i), base = yTop + lay.sizeMm * 0.8;
+        const row = { li: i, x1: x + l - e, x2: x + r + e, y1: base - m.actualBoundingBoxAscent * k - e, y2: base + m.actualBoundingBoxDescent * k + e };
+        if (el.bg) {
+          const p = lay.sizeMm * 0.22;
+          row.x1 = Math.min(row.x1, x - p); row.x2 = Math.max(row.x2, x + ln.w + p);
+          row.y1 = Math.min(row.y1, yTop - p * 0.6); row.y2 = Math.max(row.y2, yTop + lay.sizeMm + p * 0.6);
+        }
+        rows.push(row);
+      });
+    }
+    return { tel, lay, rows: rows.filter((r) => r && r.x2 > r.x1 && r.y2 > r.y1) };
+  }
+
+  // the stretched text, unbent, filling the box (origin at the box's top-left, mm)
+  function paintFilled(ctx, el, s, ppm) {
+    const put = (b, x, y, w, h, only) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(w / (b.x2 - b.x1), h / (b.y2 - b.y1));
+      ctx.translate(-b.x1, -b.y1);
+      paintText(ctx, s.tel, s.lay, ppm, only);
+      ctx.restore();
+    };
+    if (el.fit === 'lines') {
+      const n = s.rows.length, gap = n > 1 ? (el.h / n) * 0.07 : 0, rh = (el.h - gap * (n - 1)) / n;
+      s.rows.forEach((r, i) => put(r, 0, i * (rh + gap), el.w, rh, r.li));
+    } else {
+      const b = { x1: Math.min(...s.rows.map((r) => r.x1)), x2: Math.max(...s.rows.map((r) => r.x2)), y1: Math.min(...s.rows.map((r) => r.y1)), y2: Math.max(...s.rows.map((r) => r.y2)) };
+      put(b, 0, 0, el.w, el.h);
+    }
+  }
+
+  // Warps: for u from 0 (left edge) to 1 (right edge), the top and bottom of the bent text as
+  // fractions of the box height. a is how strong (0..0.8); up is the bend's direction.
+  Z.WARPS = {
+    arc: (u, a, up) => { const q = (2 * u - 1) ** 2, t = a * (up ? q : 1 - q); return [t, t + 1 - a]; },
+    bulge: (u, a, up) => { const c = 1 - (2 * u - 1) ** 2, h = up ? 1 - a + a * c : 1 - a * c; return [(1 - h) / 2, (1 + h) / 2]; },
+    wave: (u, a, up) => { const t = a * (0.5 - 0.5 * (up ? 1 : -1) * Math.sin(2 * Math.PI * u)); return [t, t + 1 - a]; },
+    rise: (u, a, up) => { const t = a * (up ? 1 - u : u); return [t, t + 1 - a]; },
+    persp: (u, a, up) => { const h = up ? 1 - a + a * u : 1 - a * u; return [(1 - h) / 2, (1 + h) / 2]; },
+  };
+
+  // Bent text is painted flat once, then redrawn in thin vertical strips, each squeezed into its
+  // slice of the shape. The result is kept, so moving or rotating the box does not repaint it.
+  const warpCache = new Map();
+  if (document.fonts) document.fonts.addEventListener('loadingdone', () => warpCache.clear());
+  function drawStretched(ctx, el, o) {
+    const s = stretchLayout(el);
+    if (!s.rows.length) return;
+    const warp = Z.WARPS[el.warp];
+    if (!warp || !el.bend) return paintFilled(ctx, el, s, o.ppm);
+    // margins catch glyph overhangs and the highlight that reach past the ink box
+    const mx = el.w * 0.06, my = el.h * 0.2, W = el.w + 2 * mx, H = el.h + 2 * my;
+    const ppm = Math.min(o.ppm, 4096 / Math.max(W, H));
+    const { x, y, rot, opacity, hidden, locked, slot, _layFont, ...look } = el;
+    const key = el.id + '@' + ppm.toFixed(3);
+    const sig = JSON.stringify(look);
+    let hit = warpCache.get(key);
+    if (!hit || hit.sig !== sig) {
+      const flat = Z.canvas(W * ppm, H * ppm);
+      const sx = flat.width / W, sy = flat.height / H;
+      const fx = flat.getContext('2d');
+      fx.setTransform(sx, 0, 0, sy, mx * sx, my * sy);
+      paintFilled(fx, el, s, ppm);
+      const out = Z.canvas(flat.width, flat.height);
+      const ox = out.getContext('2d');
+      ox.setTransform(sx, 0, 0, sy, mx * sx, my * sy);
+      const a = (Math.min(100, Math.abs(el.bend)) / 100) * 0.8, up = el.bend > 0;
+      const step = Math.max(1, Math.ceil(flat.width / 600));
+      for (let px = 0; px < flat.width; px += step) {
+        const sw = Math.min(step, flat.width - px);
+        const left = px / sx - mx;
+        const [t, b] = warp(Z.clamp((left + sw / sx / 2) / el.w, 0, 1), a, up);
+        const k = b - t;
+        // a hair wider than the strip so neighbouring strips leave no seam
+        ox.drawImage(flat, px, 0, sw, flat.height, left, t * el.h - my * k, sw / sx + 0.5 / sx, H * k);
+      }
+      hit = { sig, canvas: out };
+      warpCache.delete(key);
+      warpCache.set(key, hit);
+      if (warpCache.size > 60) warpCache.delete(warpCache.keys().next().value);
+    }
+    ctx.drawImage(hit.canvas, -mx, -my, W, H);
   }
 
   // --- photos
@@ -402,8 +540,9 @@
   }
 
   Z.drawElement = (ctx, el, o) => {
-    // a text box's height follows its words; measure before positioning by its centre
-    if (el.type === 'text') el.h = Math.max(Z.layoutText(el).h, 2);
+    // a text box's height follows its words (unless they are stretched to the box); measure
+    // before positioning by its centre
+    if (el.type === 'text' && !el.fit) el.h = Math.max(Z.layoutText(el).h, 2);
     ctx.save();
     ctx.translate(el.x + el.w / 2, el.y + el.h / 2);
     if (el.rot) ctx.rotate(Z.rad(el.rot));

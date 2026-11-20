@@ -17,7 +17,7 @@ Z.make = {
   text: (o = {}) => ({
     id: Z.uid(), type: 'text', x: 20, y: 20, w: 80, h: 10, rot: 0, opacity: 1,
     text: 'Write something', font: 'Caveat', size: 22, color: '#222222', align: 'left', lh: 1.15, spacing: 0,
-    bold: false, italic: false, upper: false, bg: '', style: 'plain', outline: '', ...o,
+    bold: false, italic: false, upper: false, bg: '', style: 'plain', outline: '', fit: '', warp: 'none', bend: 50, ...o,
   }),
   sticker: (o = {}) => ({ id: Z.uid(), type: 'sticker', kind: 'heart', x: 40, y: 40, w: 25, h: 25, rot: 0, opacity: 1, fill: '#d94f4f', stroke: '#222222', sw: 0, shadow: false, ...o }),
   tape: (o = {}) => ({ id: Z.uid(), type: 'tape', x: 40, y: 40, w: 38, h: 11, rot: -8, opacity: 0.82, color: '#e9d98a', pattern: 'plain', ...o }),

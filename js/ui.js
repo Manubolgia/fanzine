@@ -275,7 +275,8 @@ Z.ui = (() => {
     bar.innerHTML = '';
     bar.append(el('button', { class: 'btn icon', title: 'Previous spread (PageUp)', onclick: () => goSpread(-1) }, '◀'),
       el('span', { class: 'where' }, Z.isMini(P()) ? `Mini zine ${e.book + 1} of ${flat.length / 8}, page ${e.bn} of 8` : `Page ${S.cur + 1} of ${flat.length}`, el('b', {}, ' · ' + (e.pad ? 'blank page' : e.section.name))),
-      el('button', { class: 'btn icon', title: 'Next spread (PageDown)', onclick: () => goSpread(1) }, '▶'));
+      el('button', { class: 'btn icon', title: 'Next spread (PageDown)', onclick: () => goSpread(1) }, '▶'),
+      el('button', { class: 'btn', id: 'previewBtn', title: 'Flip through the zine as a reader will hold it', onclick: () => Z.preview.open() }, '📖 Preview'));
     const actions = el('div', { class: 'pageacts' });
     if (e.pad) {
       actions.append(btn('Design this page', () => addPage(e.padSection), 'primary'));
@@ -502,6 +503,8 @@ Z.ui = (() => {
     ['Marker scrawl', { font: 'Permanent Marker', size: 26, text: 'yes!!' }],
     ['Script', { font: 'Sacramento', size: 40, text: 'forever' }],
     ['Poster type', { font: 'Bebas Neue', size: 48, text: 'BIG NEWS', lh: 0.95 }],
+    ['Stretched word', { font: 'Anton', size: 30, text: 'SUMMER', fit: 'stretch', w: 80, h: 45 }],
+    ['Stacked poster', { font: 'Bebas Neue', size: 30, text: 'ONE\nSUMMER\nIN THE CITY', fit: 'lines', w: 70, h: 70 }],
     ['Highlighted', { font: 'Kalam', size: 14, text: 'important bit', bg: '#f2c14e' }],
   ];
   const TAPES = [['Masking', '#e9d98a', 'plain'], ['Kraft', '#b8915f', 'plain'], ['Pink stripes', '#f4a6b7', 'stripes'], ['Blue dots', '#7fb3d5', 'dots'], ['Mint grid', '#a8d5ba', 'grid'], ['Red check', '#d94f4f', 'checker'], ['Black', '#2b2b2b', 'plain'], ['Clear', '#e9ecef', 'plain']];
@@ -609,8 +612,9 @@ Z.ui = (() => {
     const fit = (pt) => Math.round(Math.max(pt * kx, Math.min(pt, 7)) * 2) / 2;
     for (const s of P().sections) for (const pg of s.pages) for (const e of pg.elements) {
       e.x *= kx; e.y *= ky; e.w *= kx;
-      if (e.type !== 'text') e.h *= ky;
-      if (e.type === 'text') e.size = fit(e.size);
+      if (e.type !== 'text' || e.fit) e.h *= ky;
+      if (e.type === 'text' && e.fit) { e.size *= kx; if (e.wrap) e.wrap *= kx; } // keeps the same line breaks
+      else if (e.type === 'text') e.size = fit(e.size);
       if (e.type === 'photo') { e.capSize = fit(e.capSize); e.border *= kx; }
       if (e.type === 'draw') e.width *= kx;
     }
@@ -666,7 +670,7 @@ Z.ui = (() => {
       i.onchange = () => { e[k] = +i.value; Z.changed(true); };
       return el('label', { class: 'num' }, label, i);
     };
-    box.append(el('div', { class: 'nums' }, num('x', 'X'), num('y', 'Y'), num('w', 'W'), e.type === 'text' ? null : num('h', 'H')), note('Millimetres from the top-left of the page.'));
+    box.append(el('div', { class: 'nums' }, num('x', 'X'), num('y', 'Y'), num('w', 'W'), e.type === 'text' && !e.fit ? null : num('h', 'H')), note('Millimetres from the top-left of the page.'));
     box.append(commonButtons());
   }
   function commonButtons() {
@@ -742,7 +746,7 @@ Z.ui = (() => {
       class: 'font' + (e.font === f.f ? ' on' : ''), style: { fontFamily: Z.fontStack(f.f) }, title: f.f,
       onclick: () => { e.font = f.f; S.textStyle.font = f.f; Z.changed(true); rebuild(); },
     }, el('span', { class: 'fs' }, sample), el('small', {}, f.f)))));
-    box.append(slider('Size', () => e.size, (v) => { e.size = v; S.textStyle.size = v; }, 5, 160, 0.5, ' pt'));
+    if (!e.fit) box.append(slider('Size', () => e.size, (v) => { e.size = v; S.textStyle.size = v; }, 5, 160, 0.5, ' pt'));
     box.append(row('Colour', colors(() => e.color, (v) => { e.color = v; S.textStyle.color = v; })));
     box.append(row('Align', seg([['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], () => e.align, (v) => (e.align = v))));
     box.append(el('div', { class: 'checks' }, check('Bold', () => e.bold, (v) => (e.bold = v)), check('Italic', () => e.italic, (v) => (e.italic = v)), check('UPPERCASE', () => e.upper, (v) => (e.upper = v))));
@@ -751,6 +755,28 @@ Z.ui = (() => {
     box.append(row('Style', seg([['plain', 'Normal'], ['ransom', 'Ransom note']], () => e.style, (v) => (e.style = v))));
     box.append(row('Highlight', colors(() => e.bg, (v) => (e.bg = v), { none: true })));
     box.append(row('Outline', colors(() => e.outline, (v) => (e.outline = v), { none: true })));
+    box.append(h('Shape'));
+    box.append(row('Fill the box', seg([['', 'Off', 'Normal text'], ['stretch', 'Stretch', 'The letters stretch to fill the box: drag its handles'], ['lines', 'Each line', 'Every line stretched to the full width, stacked like a poster']], () => e.fit || '', (v) => setFit(e, v))));
+    box.append(row('Warp', seg([['none', 'None'], ['arc', 'Arc'], ['bulge', 'Bulge'], ['wave', 'Wave'], ['rise', 'Rise'], ['persp', 'Perspective']], () => (e.fit && e.warp) || 'none', (v) => setWarp(e, v))));
+    if (e.fit && Z.WARPS[e.warp]) box.append(slider('Bend', () => (e.bend == null ? 50 : e.bend), (v) => (e.bend = v), -100, 100, 1));
+    box.append(note(e.fit ? 'The box decides the size: drag any handle to stretch or squash the letters (Shift keeps the proportions). A negative bend turns the shape the other way.' : 'Stretch makes the letters fill the box, so you can pull a word as wide or tall as you like.'));
+  }
+  // Stretching starts from the box the text has now, wrapping where it wraps now.
+  function setFit(e, v) {
+    if (v && !e.fit) e.wrap = e.w;
+    if (!v) e.warp = 'none';
+    e.fit = v;
+  }
+  function setWarp(e, v) {
+    if (v !== 'none' && !e.fit) {
+      setFit(e, 'stretch');
+      // room for the bend, so the letters do not get flatter
+      const g = e.h * 0.6;
+      e.h += g;
+      e.y -= g / 2;
+    }
+    e.warp = v;
+    if (e.bend == null) e.bend = 50;
   }
   function focusText() {
     tab = 'sel';

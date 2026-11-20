@@ -128,7 +128,7 @@
     const hs = {
       nw: [-hw, -hh], n: [0, -hh], ne: [hw, -hh], e: [hw, 0], se: [hw, hh], s: [0, hh], sw: [-hw, hh], w: [-hw, 0], rot: [0, -hh - 22 / ppmCss],
     };
-    if (el.type === 'text') { delete hs.n; delete hs.s; }
+    if (el.type === 'text' && !Z.stretched(el)) { delete hs.n; delete hs.s; }
     const out = {};
     for (const [k, [x, y]] of Object.entries(hs)) out[k] = tr(x, y);
     return out;
@@ -491,7 +491,9 @@
     if (h.includes('n')) t = Math.min(ly, b - 3);
     if (h.includes('s')) b = Math.max(ly, t + 3);
     const corner = h.length === 2;
-    if (el.type === 'text') {
+    // plain text: the height follows the words, and corners change the font size
+    const words = el.type === 'text' && !Z.stretched(el);
+    if (words) {
       if (corner) {
         const k = (r - l) / s.w;
         el.size = Math.max(4, Math.round(s.size * k * 10) / 10);
@@ -502,11 +504,11 @@
       if (h.includes('w')) l = r - s.w * k; else r = l + s.w * k;
       if (h.includes('n')) t = b - s.h * k; else b = t + s.h * k;
     }
-    const nw = r - l, nh = el.type === 'text' ? el.h : b - t;
-    const lcx = (l + r) / 2, lcy = el.type === 'text' ? 0 : (t + b) / 2;
+    const nw = r - l, nh = words ? el.h : b - t;
+    const lcx = (l + r) / 2, lcy = words ? 0 : (t + b) / 2;
     const ncx = cx + lcx * c - lcy * sn, ncy = cy + lcx * sn + lcy * c;
     el.w = nw;
-    if (el.type !== 'text') el.h = nh;
+    if (!words) el.h = nh;
     el.x = ncx - nw / 2 - d.side * W;
     el.y = ncy - el.h / 2;
   }

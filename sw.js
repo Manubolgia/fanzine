@@ -3,11 +3,11 @@
 // when online (so updates arrive on the next open) and falls back to the cache when offline.
 // Only this site's own files pass through here; sync requests to GitHub are never cached.
 'use strict';
-const CACHE = 'fanzine-v1';
+const CACHE = 'fanzine-v2';
 const CORE = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'fonts/fonts.css',
   'js/core.js', 'js/fonts.js', 'js/model.js', 'js/layouts.js', 'js/store.js', 'js/sync.js', 'js/photos.js',
-  'js/art.js', 'js/render.js', 'js/pdf.js', 'js/guide.js', 'js/ui.js', 'js/editor.js', 'js/app.js',
+  'js/art.js', 'js/render.js', 'js/pdf.js', 'js/guide.js', 'js/preview.js', 'js/ui.js', 'js/editor.js', 'js/app.js',
   'icons/icon-192.png', 'icons/apple-touch-icon.png',
 ];
 
